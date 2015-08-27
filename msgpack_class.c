@@ -10,6 +10,7 @@
 typedef struct {
     zend_object object;
     long php_only;
+    zend_bool assoc;
 } php_msgpack_base_t;
 
 typedef struct {
@@ -20,6 +21,7 @@ typedef struct {
     msgpack_unpack_t mp;
     msgpack_unserialize_data_t var_hash;
     long php_only;
+    zend_bool assoc;
     zend_bool finished;
     int error;
 } php_msgpack_unpacker_t;
@@ -274,6 +276,7 @@ static zend_object_value php_msgpack_unpacker_new(
 static ZEND_METHOD(msgpack, __construct)
 {
     zend_bool php_only = MSGPACK_G(php_only);
+    zend_bool assoc = MSGPACK_G(assoc);
     MSGPACK_BASE_OBJECT;
 
     if (zend_parse_parameters(
@@ -283,6 +286,7 @@ static ZEND_METHOD(msgpack, __construct)
     }
 
     base->php_only = php_only;
+    base->assoc = assoc;
 }
 
 static ZEND_METHOD(msgpack, setOption)
@@ -303,6 +307,10 @@ static ZEND_METHOD(msgpack, setOption)
             convert_to_boolean(value);
             base->php_only = Z_BVAL_P(value);
             break;
+        case MSGPACK_CLASS_OPT_ASSOC:
+            convert_to_boolean(value);
+            base->assoc = Z_BVAL_P(value);
+            break;
         default:
             MSGPACK_WARNING("[msgpack] (MessagePack::setOption) "
                             "error setting msgpack option");
@@ -318,6 +326,7 @@ static ZEND_METHOD(msgpack, pack)
     zval *parameter;
     smart_str buf = {0};
     int php_only = MSGPACK_G(php_only);
+    zend_bool assoc = MSGPACK_G(assoc);
     MSGPACK_BASE_OBJECT;
 
     if (zend_parse_parameters(
@@ -327,10 +336,12 @@ static ZEND_METHOD(msgpack, pack)
     }
 
     MSGPACK_G(php_only) = base->php_only;
+    MSGPACK_G(assoc) = base->assoc;
 
     php_msgpack_serialize(&buf, parameter TSRMLS_CC);
 
     MSGPACK_G(php_only) = php_only;
+    MSGPACK_G(assoc) = assoc;
 
     ZVAL_STRINGL(return_value, buf.c, buf.len, 1);
 
@@ -343,6 +354,7 @@ static ZEND_METHOD(msgpack, unpack)
     int str_len;
     zval *object = NULL;
     int php_only = MSGPACK_G(php_only);
+    zend_bool assoc = MSGPACK_G(assoc);
     MSGPACK_BASE_OBJECT;
 
     if (zend_parse_parameters(
@@ -358,6 +370,7 @@ static ZEND_METHOD(msgpack, unpack)
     }
 
     MSGPACK_G(php_only) = base->php_only;
+    MSGPACK_G(assoc) = base->assoc;
 
     if (object == NULL)
     {
@@ -377,6 +390,7 @@ static ZEND_METHOD(msgpack, unpack)
     }
 
     MSGPACK_G(php_only) = php_only;
+    MSGPACK_G(assoc) = assoc;
 }
 
 static ZEND_METHOD(msgpack, unpacker)
@@ -398,6 +412,7 @@ static ZEND_METHOD(msgpack, unpacker)
 static ZEND_METHOD(msgpack_unpacker, __construct)
 {
     zend_bool php_only = MSGPACK_G(php_only);
+    zend_bool assoc = MSGPACK_G(assoc);
     MSGPACK_UNPACKER_OBJECT;
 
     if (zend_parse_parameters(
@@ -407,6 +422,7 @@ static ZEND_METHOD(msgpack_unpacker, __construct)
     }
 
     unpacker->php_only = php_only;
+    unpacker->assoc = assoc;
 
     unpacker->buffer.c = NULL;
     unpacker->buffer.len = 0;
@@ -456,6 +472,10 @@ static ZEND_METHOD(msgpack_unpacker, setOption)
             convert_to_boolean(value);
             unpacker->php_only = Z_BVAL_P(value);
             break;
+        case MSGPACK_CLASS_OPT_ASSOC:
+            convert_to_boolean(value);
+            unpacker->assoc = Z_BVAL_P(value);
+            break;
         default:
             MSGPACK_WARNING("[msgpack] (MessagePackUnpacker::setOption) "
                             "error setting msgpack option");
@@ -497,6 +517,7 @@ static ZEND_METHOD(msgpack_unpacker, execute)
     size_t len, off;
     int error_display = MSGPACK_G(error_display);
     int php_only = MSGPACK_G(php_only);
+    zend_bool assoc = MSGPACK_G(assoc);
     MSGPACK_UNPACKER_OBJECT;
 
     if (zend_parse_parameters(
@@ -550,11 +571,13 @@ static ZEND_METHOD(msgpack_unpacker, execute)
 
     MSGPACK_G(error_display) = 0;
     MSGPACK_G(php_only) = unpacker->php_only;
+    MSGPACK_G(assoc) = unpacker->assoc;
 
     ret = template_execute(&unpacker->mp, data, len, &off);
 
     MSGPACK_G(error_display) = error_display;
     MSGPACK_G(php_only) = php_only;
+    MSGPACK_G(assoc) = assoc;
 
     if (str != NULL)
     {
@@ -677,6 +700,9 @@ void msgpack_init_class()
     zend_declare_class_constant_long(
         msgpack_ce, ZEND_STRS("OPT_PHPONLY") - 1,
         MSGPACK_CLASS_OPT_PHPONLY TSRMLS_CC);
+    zend_declare_class_constant_long(
+        msgpack_ce, ZEND_STRS("OPT_ASSOC") - 1,
+        MSGPACK_CLASS_OPT_ASSOC TSRMLS_CC);
 #endif
 
     /* unpacker */

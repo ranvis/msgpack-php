@@ -555,7 +555,7 @@ int msgpack_unserialize_map(
 
     if (count == 0)
     {
-        if (MSGPACK_G(php_only))
+        if (MSGPACK_G(php_only) || !MSGPACK_G(assoc))
         {
             object_init(*obj);
         }
@@ -708,7 +708,14 @@ int msgpack_unserialize_map_item(
 
     if (Z_TYPE_PP(container) != IS_ARRAY && Z_TYPE_PP(container) != IS_OBJECT)
     {
-        array_init(*container);
+        if (MSGPACK_G(assoc))
+        {
+            array_init(*container);
+        }
+        else
+        {
+            object_init(*container);
+        }
     }
 
     switch (Z_TYPE_P(key))
@@ -726,9 +733,19 @@ int msgpack_unserialize_map_item(
             zval_ptr_dtor(&key);
             break;
         case IS_STRING:
-            if (zend_symtable_update(
-                    HASH_OF(*container), Z_STRVAL_P(key), Z_STRLEN_P(key) + 1,
-                    &val, sizeof(val), NULL) == FAILURE)
+        {
+            int result;
+
+            if (MSGPACK_G(assoc) || Z_TYPE_PP(container) == IS_ARRAY) {
+                result = zend_symtable_update(
+                        HASH_OF(*container), Z_STRVAL_P(key), Z_STRLEN_P(key) + 1,
+                        &val, sizeof(val), NULL);
+            } else {
+                result = zend_hash_update(
+                        HASH_OF(*container), Z_STRVAL_P(key), Z_STRLEN_P(key) + 1,
+                        &val, sizeof(val), NULL);
+            }
+            if (result == FAILURE)
             {
                 zval_ptr_dtor(&val);
                 MSGPACK_WARNING(
@@ -737,6 +754,7 @@ int msgpack_unserialize_map_item(
             }
             zval_ptr_dtor(&key);
             break;
+        }
         default:
             MSGPACK_WARNING("[msgpack] (%s) illegal key type", __FUNCTION__);
 

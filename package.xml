@@ -250,6 +250,7 @@
     <file name="136.phpt" role="test" />
     <file name="136b.phpt" role="test" />
     <file name="137.phpt" role="test" />
+    <file name="assoc.phpt" role="test" />
     <file name="bug006.phpt" role="test" />
     <file name="bug011.phpt" role="test" />
     <file name="bug012.phpt" role="test" />

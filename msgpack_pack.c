@@ -276,7 +276,11 @@ inline static void msgpack_serialize_array(
 
     if (object)
     {
-		if (MSGPACK_G(php_only))
+		if (!MSGPACK_G(assoc) && (!MSGPACK_G(php_only) || !strcmp(class_name, "stdClass")))
+		{
+			msgpack_pack_map(buf, n);
+		}
+		else if (MSGPACK_G(php_only))
 		{
 			if (Z_ISREF_P(val))
 			{
